@@ -13,6 +13,7 @@ Roadmap
 -------
 
 - Run (Issue: https://github.com/ericpopivker/.NET-Fiddle-NancyFX-Integration/issues/1)
+- Run in Container with security
 - Validate
 - Auto Complete
-- Web
+- Web.  Page with 3 text areas for Module, ViewModel and View.   Buttons Run, Validate and Auto Complete that display different results in output window
