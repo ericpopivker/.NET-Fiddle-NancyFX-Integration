@@ -1,30 +1,24 @@
-﻿using DotNetFiddle.CSharpConsole;
-using DotNetFiddle.Infrastructure;
-using NUnit.Framework;
+﻿//using DotNetFiddle.Infrastructure;
+//using NUnit.Framework;
 
-namespace DotNetFiddle.NancyFx.Tests
-{
-	[TestFixture]
-	public class RunContainerTest
-	{
+//namespace DotNetFiddle.NancyFx.Tests
+//{
+//    [TestFixture]
+//    public class RunContainerTest
+//    {
 
-		/// <summary>
-		/// Execute code block for CSharp Console code helper
-		/// </summary>
-		private RunResult ExecuteNancyFxCode(NancyFxCodeBlock codeBlock)
-		{
-			//var opts = new ConsoleOrScriptRunOpts()
-			//{
-			//	CodeBlock = new ConsoleOrScriptCodeBlock { CodeBlock = codeBlock },
-			//	Language = Language.CSharp,
-			//	ProjectType = ProjectType.Console
-			//};
+//        /// <summary>
+//        /// Execute code block for CSharp Console code helper
+//        /// </summary>
+//        private RunResult ExecuteNancyFxCode(NancyFxCodeBlock codeBlock)
+//        {
+//            var opts = new NancyFxRunOpts {CodeBlock = codeBlock};
 
-			//return ContainerUtils.ExecuteCode(opts, typeof(CSharpConsoleCodeHelper));
-			return null;
-		}
+//            return ContainerUtils.ExecuteCode(opts, typeof(NancyFxCodeHelper));
+//            return null;
+//        }
 
-//		private const string HelloWorldCode = @"
+//        private const string HelloWorldCode = @"
 //using System;
 //					
 //public class Program
@@ -35,14 +29,28 @@ namespace DotNetFiddle.NancyFx.Tests
 //    }
 //}";
 
-//		[Test]
-//		public void ExecuteCode_WhenCSharpConsole_ThenWorks()
-//		{
-//			var result = ExecuteCSharpConsole(HelloWorldCode);
+//        [Test]
+//        public void ExecuteCode_WhenCSharpConsole_ThenWorks()
+//        {
 
-//			Assert.IsTrue(result.IsSuccess);
-//			Assert.AreEqual("Hello World", result.ConsoleOutput);
-//		}
+//            string moduleCode = @"public class SampleModule : Nancy.NancyModule
+//{
+//    public SampleModule()
+//    {
+//        Get[""/""] = _ => ""Hello World!"";
+//    }
+//}";
 
-	}
-}
+//            var codeBlock = new NancyFxCodeBlock
+//            {
+//                Module = moduleCode
+//            };
+
+//            var result = ExecuteNancyFxCode(codeBlock);
+
+//            Assert.IsTrue(result.IsSuccess);
+//            Assert.AreEqual("Hello World", result.ConsoleOutput);
+//        }
+
+//    }
+//}

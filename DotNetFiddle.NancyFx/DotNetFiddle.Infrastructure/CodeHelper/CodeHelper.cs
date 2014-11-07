@@ -137,12 +137,12 @@ namespace DotNetFiddle.Infrastructure
 			TextWriter defaultConsoleOut = Console.Out;
 			TextReader defaultConsoleIn = Console.In;
 
-			SandboxHelper.ExecuteInFullTrust(
-				() =>
-				{
-					Console.SetOut(_consoleWriter);
-					Console.SetIn(_consoleReader);
-				});
+            SandboxHelper.ExecuteInFullTrust(
+                () =>
+                {
+                    Console.SetOut(_consoleWriter);
+                    Console.SetIn(_consoleReader);
+                });
 
 			try
 			{
@@ -159,6 +159,9 @@ namespace DotNetFiddle.Infrastructure
 					case ProjectType.Mvc:
 						RunMvc(opts, result);
 						break;
+                    case ProjectType.NancyFx:
+                        RunNancyFx(opts, result);
+                        break;
 					default:
 						throw new NotImplementedException();
 				}
@@ -187,13 +190,13 @@ namespace DotNetFiddle.Infrastructure
 			}
 			finally
 			{
-				//Restore Console Out just in case
-				SandboxHelper.ExecuteInFullTrust(
-					() =>
-					{
-						Console.SetOut(defaultConsoleOut);
-						Console.SetIn(defaultConsoleIn);
-					});
+                //Restore Console Out just in case
+                SandboxHelper.ExecuteInFullTrust(
+                    () =>
+                    {
+                        Console.SetOut(defaultConsoleOut);
+                        Console.SetIn(defaultConsoleIn);
+                    });
 
 				// unsubscribe
 				AppDomain.CurrentDomain.AssemblyResolve -= handler;
@@ -236,13 +239,28 @@ namespace DotNetFiddle.Infrastructure
 			return true;
 		}
 
-		private void RunConsole(RunOptsBase opts, RunResult result)
+
+	    private void RunConsole(RunOptsBase opts, RunResult result)
+	    {
+            CompilerResults compilerResults;
+            compilerResults = CompileConsole(opts, 4);
+
+	        RunConsole(compilerResults, result);
+	    }
+
+        protected virtual void RunNancyFx(RunOptsBase opts, RunResult result)
+        {
+            CompilerResults compilerResults;
+            compilerResults = CompileNancyFx(opts, 4);
+
+            RunConsole(compilerResults, result);
+        }
+
+
+        private void RunConsole(CompilerResults compilerResults, RunResult result)
 		{
 			new PermissionSet(PermissionState.Unrestricted).Assert();
-
-			CompilerResults compilerResults;
-			compilerResults = CompileConsole(opts, 4);
-
+			
 			if (!IsCompilationSucceed(compilerResults, result))
 			{
 				PermissionSet.RevertAssert();
@@ -314,10 +332,16 @@ namespace DotNetFiddle.Infrastructure
 		
 		public CompilerResults CompileConsole(RunOptsBase opts, int? warningLevel = null, bool loadAssembyToAppDomain = true)
 		{
-			return CompileCode(new List<string>() {((ConsoleOrScriptCodeBlock) opts.CodeBlock).CodeBlock}, warningLevel, loadAssembyToAppDomain);
+			return CompileCode(new List<string>() {((ConsoleOrScriptCodeBlock) opts.CodeBlock).CodeBlock}, null, warningLevel, loadAssembyToAppDomain);
 		}
 
-		protected void PrepareForCompile(IEnumerable<string> codeBlocks,
+        protected virtual CompilerResults CompileNancyFx(RunOptsBase opts, int? warningLevel = null, bool loadAssembyToAppDomain = true)
+	    {
+            throw new NotImplementedException();
+	    }
+
+	    protected void PrepareForCompile(IEnumerable<string> codeBlocks,
+                                IEnumerable<string> embeddedResources,
 								int? warningLevel,
 								bool loadAssembyToAppDomain, out CompilerParameters compilerParams, out List<string> codeItems)
 		{
@@ -354,6 +378,11 @@ namespace DotNetFiddle.Infrastructure
 			//http://stackoverflow.com/questions/875723/how-to-debug-break-in-codedom-compiled-code
 			compilerParams.IncludeDebugInformation = true;
 
+	        if (embeddedResources != null)
+	        {
+                compilerParams.EmbeddedResources.AddRange(embeddedResources.ToArray());
+	        }
+
 			// FB 3328. We switch Security mechanism for new library back to .Net 2.0, not .Net 4.0. Without it line numbers won't be displayed in stack trace....
 			var level1Attribute = GetSecurityLevel1Attribute();
 			codeItems.Add(level1Attribute);
@@ -361,6 +390,7 @@ namespace DotNetFiddle.Infrastructure
 
 		protected CompilerResults CompileCode(
 			IEnumerable<string> codeBlocks,
+            IEnumerable<string> embeddedResources = null,
 			int? warningLevel = null,
 			bool loadAssembyToAppDomain = true)
 		{
@@ -372,8 +402,9 @@ namespace DotNetFiddle.Infrastructure
 
 			CompilerParameters compilerParams;
 			List<string> codeItems;
-			PrepareForCompile(codeBlocks, warningLevel, loadAssembyToAppDomain, out compilerParams, out codeItems);
+			PrepareForCompile(codeBlocks, embeddedResources, warningLevel, loadAssembyToAppDomain, out compilerParams, out codeItems);
 			CompilerResults cr = codeCompiler.CompileAssemblyFromSource(compilerParams, codeItems.ToArray());
+            
 			return cr;
 		}
 			
@@ -540,12 +571,6 @@ namespace DotNetFiddle.Infrastructure
 		}
 
 		protected virtual void RunMvc(RunOptsBase opts, RunResult result)
-		{
-			throw new NotImplementedException();
-		}
-
-
-		protected virtual void RunNancyFx(RunOptsBase opts, RunResult result)
 		{
 			throw new NotImplementedException();
 		}

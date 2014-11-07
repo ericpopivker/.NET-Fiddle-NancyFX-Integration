@@ -84,6 +84,9 @@ namespace DotNetFiddle.RunContainer
 
 		protected virtual bool CheckCodeBlock(RunOptsBase opts, ref RunResult runResult)
 		{
+            //ToDo:test Only
+		    return true;
+
 			if (opts.CodeBlock == null)
 				opts.CodeBlock = new ConsoleOrScriptCodeBlock { CodeBlock = string.Empty };
 			else if (((ConsoleOrScriptCodeBlock)opts.CodeBlock).CodeBlock == null)

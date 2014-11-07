@@ -2,52 +2,45 @@
 using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Web;
+using DotNetFiddle.CSharpConsole;
 using DotNetFiddle.Infrastructure;
-using StackExchange.Profiling;
+using DotNetFiddle.NancyFx.NancyUtils;
+using Roslyn.Compilers;
+using Roslyn.Compilers.Common;
+using Roslyn.Compilers.CSharp;
 
 namespace DotNetFiddle.NancyFx
 {
-	public class NancyFxCodeHelper
+
+	public class NancyFxCodeHelper : CSharpCodeHelper
 	{
-		private CodeHelper _languageCodeHelper;  //C# or Vb.NET. For ex. CSharpCodeHelper
+	    public NancyFxCodeHelper()
+	    {
+            NuGetDllReferences.AddRange(NuGetDllfererencesHelper.NancyFxNuGetDllfererences);
+	    }
 
-		//private static string[] _assembliesForBuild;  //Was used in .NET Before
-
-		static NancyFxCodeHelper()
+	    public override Language Language
 		{
-		
+			get { return Language.CSharp; }
 		}
 
-		public NancyFxCodeHelper(CodeHelper languageCodeHelper)
+		public override ProjectType ProjectType
 		{
-			_languageCodeHelper = languageCodeHelper;
+			get { return ProjectType.NancyFx; }
 		}
-
-		public Language Language
-		{
-			get { return _languageCodeHelper.Language; }
-		}
-
-		public ProjectType ProjectType
-		{
-			get { return ProjectType.Mvc; }
-		}
-
-
 
 		//Good examples is here: http://www.jhovgaard.com/from-aspnet-mvc-to-nancy-part-2/
 		private const string _viewCsSample = @"";
 
 		private const string _modelCsSample = @"";
 
-		private const string _controllerCsSample = @"public class SampleModule : Nancy.NancyModule
+		private const string _controllerCsSample = @"
+public class SampleModule : Nancy.NancyModule
 {
     public SampleModule()
     {
-        Get[""/""] = _ => ""Hello World!"";
+        Get[""/""] = _ => ""Hello World! Yep!"";
     }
 }";
 		private const string _modelVbSample = @"";
@@ -56,9 +49,20 @@ namespace DotNetFiddle.NancyFx
 
 		private const string _controllerVbSample = @"";
 
+        // http://stackoverflow.com/questions/13601412/compilation-errors-when-dealing-with-c-sharp-script-using-roslyn
+        public override CommonSyntaxTree ParseSyntaxTree(string code)
+        {
+            var options = new ParseOptions(CompatibilityMode.None, LanguageVersion.CSharp6, true, SourceCodeKind.Regular, null);
+            var tree = ParseSyntaxTree(code, options);
+            return tree;
+        }
 
+	    public override string GetSampleStorageId()
+	    {
+            return "CsNancy";
+	    }
 
-		public CodeBlock GetSampleCodeBlock()
+	    public override CodeBlock GetSampleCodeBlock()
 		{
 			switch (Language)
 			{
@@ -81,21 +85,10 @@ namespace DotNetFiddle.NancyFx
 			}
 		}
 
-	
-
-		public string GetSecurityLevel1Attribute()
-		{
-			return _languageCodeHelper.GetSecurityLevel1Attribute();
-		}
-
-
-
 		public RunResult Run(NancyFxRunOpts opts)
 		{
-			throw new NotImplementedException();
+		    return base.Run(opts);
 		}
-
-	
 
 		public virtual NancyFxValidateResult Validate(NancyFxRunOpts opts)
 		{
@@ -118,18 +111,73 @@ namespace DotNetFiddle.NancyFx
 			switch (nancyFxFileType)
 			{
 				case NancyFxFileType.Module:
-					return _languageCodeHelper.GetAutoCompleteItems(codeBlock.Module, pos);
+					return GetAutoCompleteItems(codeBlock.Module, pos);
 				case NancyFxFileType.View:
 					return new List<AutoCompleteItem>();
 				case NancyFxFileType.Controller:
 					{
 						var aggregateCode = codeBlock.Controller + codeBlock.Module;
-						return _languageCodeHelper.GetAutoCompleteItems(aggregateCode, pos);
+						return GetAutoCompleteItems(aggregateCode, pos);
 					}
 				default:
 					throw new ArgumentOutOfRangeException("nancyFxFileType");
 			}
 		}
 
+        protected override bool VerifyDeniedCodeBlock(RunOptsBase opts, RunResult result)
+        {
+            var codeBlock = ((NancyFxCodeBlock) opts.CodeBlock);
+            var aggregateCode = codeBlock.Controller + codeBlock.Module;
+            return VerifyDeniedCode(aggregateCode, result);
+        }
+
+
+        private static readonly Object SyncObj = new object();
+        protected override CompilerResults CompileNancyFx(RunOptsBase opts, int? warningLevel = null, bool loadAssembyToAppDomain = true)
+        {
+            CompilerResults result;
+
+            var nancyFxRunOpts = (NancyFxRunOpts)opts;
+            var codeBlock = ((NancyFxCodeBlock) opts.CodeBlock);
+
+            List<string> CodeBlocks = new List<string>()
+            {
+                NancySelfHostingHelper.Instance.GenerateNancySelfHostingCode(nancyFxRunOpts.HostIndex),
+                codeBlock.Controller,
+                codeBlock.Module,
+            };
+
+
+            //ToDo: Add view as embded resources to assembly???
+            if (!string.IsNullOrEmpty(codeBlock.View))
+            {
+                lock (SyncObj)
+                {
+                    
+                    string path = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), @"index.html"); 
+                    // Write the stream contents to a new file named "index.html".
+                    using (StreamWriter outfile = new StreamWriter(path))
+                    {
+                        outfile.Write(codeBlock.View);
+                    }
+
+                    result = CompileCode(
+                        CodeBlocks,
+                        new List<string>(){path},
+                        warningLevel,
+                        loadAssembyToAppDomain);
+                }
+            }
+            else
+            {
+                result = CompileCode(
+                        CodeBlocks,
+                        null,
+                        warningLevel,
+                        loadAssembyToAppDomain);
+            }
+
+            return result;
+        }
 	}
 }
